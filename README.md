@@ -1,6 +1,6 @@
 # SimpleProxy-Regen
 A very simple proxy that uses HTML and PHP.
-
+This proxy is in BETA testing. Expect bugs!
 # Running The Proxy
 #### Github Codespaces
 1. Click on the green **"Code"** button, select **Codespaces**, and make a new codespace.
