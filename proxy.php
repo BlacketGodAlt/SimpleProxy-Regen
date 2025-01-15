@@ -34,12 +34,13 @@ if (isset($_GET['url'])) {
     }
 
     $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
     curl_close($ch);
 
-    // Rewrite all resource links in the HTML content
+    // Get the base URL for resource rewriting
     $baseUrl = parse_url($url, PHP_URL_SCHEME) . "://" . parse_url($url, PHP_URL_HOST);
 
-    // Rewrite links for various elements
+    // Rewrite links, images, scripts, and CSS
     $response = preg_replace_callback_array(
         [
             // Rewrite <a href="...">
@@ -58,15 +59,28 @@ if (isset($_GET['url'])) {
             '/<script\s+[^>]*src=["\']([^"\']+)["\']/i' => function ($matches) use ($baseUrl) {
                 return '<script src="' . makeAbsoluteUrl($matches[1], $baseUrl) . '"';
             },
+            // Rewrite CSS background URLs in <style> tags
+            '/url\(["\']?([^"\')]+)["\']?\)/i' => function ($matches) use ($baseUrl) {
+                return 'url(' . makeAbsoluteUrl($matches[1], $baseUrl) . ')';
+            },
         ],
         $response
     );
 
     // Set the appropriate content type
-    header('Content-Type: text/html');
+    if (strpos($contentType, 'text/html') !== false) {
+        header('Content-Type: text/html');
+    } elseif (strpos($contentType, 'text/css') !== false) {
+        header('Content-Type: text/css');
+    } elseif (strpos($contentType, 'application/javascript') !== false) {
+        header('Content-Type: application/javascript');
+    } else {
+        header('Content-Type: ' . $contentType);
+    }
+
     http_response_code($statusCode);
 
-    // Output the modified HTML
+    // Output the modified content
     echo $response;
 } else {
     echo 'No URL provided.';
