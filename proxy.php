@@ -1,6 +1,4 @@
 <?php
-// proxy.php
-
 if (isset($_GET['url'])) {
     $url = filter_var($_GET['url'], FILTER_VALIDATE_URL);
 
@@ -8,34 +6,42 @@ if (isset($_GET['url'])) {
         die('Invalid URL.');
     }
 
-    // Initialize cURL
+    // Fetch the page content using cURL
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
-    // Include headers in the response
-    curl_setopt($ch, CURLOPT_HEADER, true);
-
-    // Execute the request
     $response = curl_exec($ch);
 
-    // Check for errors
     if (curl_errno($ch)) {
         die('Error fetching the URL: ' . curl_error($ch));
     }
 
-    // Get the HTTP status code
     $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    // Close cURL
     curl_close($ch);
 
-    // Set the appropriate content type for the response
+    // Rewrite the links in the HTML content
+    $baseUrl = parse_url($url, PHP_URL_SCHEME) . "://" . parse_url($url, PHP_URL_HOST);
+    $response = preg_replace_callback(
+        '/<a\s+[^>]*href=["\']([^"\']+)["\']/i',
+        function ($matches) use ($baseUrl) {
+            $link = $matches[1];
+            // Convert relative URLs to absolute URLs
+            if (!preg_match('/^(http|https):\/\//i', $link)) {
+                $link = rtrim($baseUrl, '/') . '/' . ltrim($link, '/');
+            }
+            // Route the link back through the proxy
+            return '<a href="proxy.php?url=' . urlencode($link) . '"';
+        },
+        $response
+    );
+
+    // Set the appropriate content type
     header('Content-Type: text/html');
     http_response_code($statusCode);
 
-    // Output the response
+    // Output the modified HTML
     echo $response;
 } else {
     echo 'No URL provided.';
