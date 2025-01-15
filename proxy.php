@@ -1,4 +1,19 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Helper function to make URLs absolute
+function makeAbsoluteUrl($url, $baseUrl)
+{
+    // If the URL is already absolute, return it
+    if (preg_match('/^(http|https):\/\//i', $url)) {
+        return $url;
+    }
+    // Convert relative URLs to absolute
+    return rtrim($baseUrl, '/') . '/' . ltrim($url, '/');
+}
+
 if (isset($_GET['url'])) {
     $url = filter_var($_GET['url'], FILTER_VALIDATE_URL);
 
@@ -46,17 +61,6 @@ if (isset($_GET['url'])) {
         ],
         $response
     );
-
-    // Helper function to make URLs absolute
-    function makeAbsoluteUrl($url, $baseUrl)
-    {
-        // If the URL is already absolute, return it
-        if (preg_match('/^(http|https):\/\//i', $url)) {
-            return $url;
-        }
-        // Convert relative URLs to absolute
-        return rtrim($baseUrl, '/') . '/' . ltrim($url, '/');
-    }
 
     // Set the appropriate content type
     header('Content-Type: text/html');
