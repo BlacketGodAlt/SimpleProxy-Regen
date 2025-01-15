@@ -21,21 +21,42 @@ if (isset($_GET['url'])) {
     $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    // Rewrite the links in the HTML content
+    // Rewrite all resource links in the HTML content
     $baseUrl = parse_url($url, PHP_URL_SCHEME) . "://" . parse_url($url, PHP_URL_HOST);
-    $response = preg_replace_callback(
-        '/<a\s+[^>]*href=["\']([^"\']+)["\']/i',
-        function ($matches) use ($baseUrl) {
-            $link = $matches[1];
-            // Convert relative URLs to absolute URLs
-            if (!preg_match('/^(http|https):\/\//i', $link)) {
-                $link = rtrim($baseUrl, '/') . '/' . ltrim($link, '/');
-            }
-            // Route the link back through the proxy
-            return '<a href="proxy.php?url=' . urlencode($link) . '"';
-        },
+
+    // Rewrite links for various elements
+    $response = preg_replace_callback_array(
+        [
+            // Rewrite <a href="...">
+            '/<a\s+[^>]*href=["\']([^"\']+)["\']/i' => function ($matches) use ($baseUrl) {
+                return '<a href="proxy.php?url=' . urlencode(makeAbsoluteUrl($matches[1], $baseUrl)) . '"';
+            },
+            // Rewrite <img src="...">
+            '/<img\s+[^>]*src=["\']([^"\']+)["\']/i' => function ($matches) use ($baseUrl) {
+                return '<img src="' . makeAbsoluteUrl($matches[1], $baseUrl) . '"';
+            },
+            // Rewrite <link href="...">
+            '/<link\s+[^>]*href=["\']([^"\']+)["\']/i' => function ($matches) use ($baseUrl) {
+                return '<link href="' . makeAbsoluteUrl($matches[1], $baseUrl) . '"';
+            },
+            // Rewrite <script src="...">
+            '/<script\s+[^>]*src=["\']([^"\']+)["\']/i' => function ($matches) use ($baseUrl) {
+                return '<script src="' . makeAbsoluteUrl($matches[1], $baseUrl) . '"';
+            },
+        ],
         $response
     );
+
+    // Helper function to make URLs absolute
+    function makeAbsoluteUrl($url, $baseUrl)
+    {
+        // If the URL is already absolute, return it
+        if (preg_match('/^(http|https):\/\//i', $url)) {
+            return $url;
+        }
+        // Convert relative URLs to absolute
+        return rtrim($baseUrl, '/') . '/' . ltrim($url, '/');
+    }
 
     // Set the appropriate content type
     header('Content-Type: text/html');
